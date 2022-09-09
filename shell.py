@@ -1,4 +1,7 @@
-# This document will read the raw input from the terminal window
+# Esse documento ira ler o input no terminal
+import chavesSharpBasic
 while True:
     text = input('ChavesSharp > ')
-    print(text)
+    result, error = chavesSharpBasic.run('<stdin>',text)
+    if error: print(error.as_string())
+    else: print(result)
