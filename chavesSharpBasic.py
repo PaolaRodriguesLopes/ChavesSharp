@@ -3,8 +3,8 @@ DIGITS = '0123456789'
 LETTERS = 'abcdefghijklmnopqrstuvwxyz'
 
 # Criando tokens 
-TT_INT		= 'PAGUEALUGUEL'
-TT_FLOAT    = 'GENTALHAGENTALHA'
+TT_INT		= 'PAGUE_O_ALUGUEL'
+TT_FLOAT    = 'GENTALHA_GENTALHA'
 TT_PLUS     = 'MAIS'
 TT_MINUS    = 'MENOS'
 TT_MUL      = 'VEZES'
@@ -58,7 +58,7 @@ class Lexer:
             elif self.current_char in DIGITS:
                 tokens.append(self.make_number())
             elif self.current_char in LETTERS:
-                tokens.append(self.make_letters())
+                tokens.append(self.binary_expression())
             elif self.current_char == '(':
                 tokens.append(Token(TT_LPAREN))
                 self.advance()
@@ -91,7 +91,7 @@ class Lexer:
         else:
             return Token(TT_FLOAT, float(num_str))
     
-    def make_letters(self):
+    def binary_expression(self):
         let_str = ''
         while self.current_char != None and self.current_char in LETTERS:
             let_str += self.current_char

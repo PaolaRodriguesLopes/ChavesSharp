@@ -1,0 +1,7 @@
+expr    : term ((MAIS|MENOS) term)*
+
+term    : factor ((VEZES|DIVIDO) factor)*
+
+factor  : PAGUE_O_ALUGUEL|GENTALHA_GENTALHA
+				: (MAIS|MENOS) factor
+				: LPAREN expr RPAREN
