@@ -148,3 +148,32 @@ class Position:
 
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
+
+# Nos
+# Definindo o tipo numerico de no, apenas vai recer um int ou um float  
+class NumberNode:
+	def __init__(self, tok):
+		self.tok = tok
+
+    # Retorna a representacao do token
+	def __repr__(self):
+		return f'{self.tok}'
+
+# Node para operacoes matematicas
+# Precisa do node da esquerda e da direita e o token operador
+class BinOpNode:
+	def __init__(self, left_node, op_tok, right_node):
+		self.left_node = left_node
+		self.op_tok = op_tok
+		self.right_node = right_node
+
+	def __repr__(self):
+		return f'({self.left_node}, {self.op_tok}, {self.right_node})'
+
+class UnaryOpNode:
+	def __init__(self, op_tok, node):
+		self.op_tok = op_tok
+		self.node = node
+
+	def __repr__(self):
+		return f'({self.op_tok}, {self.node})'
