@@ -1,4 +1,5 @@
-expr    : term ((MAIS|MENOS) term)*
+expr    : KEYWORD:TAMARINDO IDENTIFIER RECEBE expr
+		: term ((MAIS|MENOS) term)*
 
 term    : factor ((VEZES|DIVIDO) factor)*
 
@@ -7,5 +8,5 @@ factor	: (MAIS|MENOS) factor
 
 power		: atom (ELEVADO factor)*
 
-atom 		: PAGUE_O_ALUGUEL|GENTALHA_GENTALHA
+atom 		: PAGUE_O_ALUGUEL|GENTALHA_GENTALHA|IDENTIFIER
 				: LPAREN expr RPAREN

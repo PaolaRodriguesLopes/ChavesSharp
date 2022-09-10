@@ -1,13 +1,17 @@
 from strings_with_arrows import *
+import string
 
 # Constantes
 DIGITS = '0123456789'
-LETTERS = 'abcdefghijklmnopqrstuvwxyz'
+LETTERS = string.ascii_letters
+LETTERS_DIGITS = LETTERS + DIGITS 
 
 ######################################## TOKENS ###############################################
 # Criando tokens
 TT_INT = 'PAGUE_O_ALUGUEL'
 TT_FLOAT = 'GENTALHA_GENTALHA'
+TT_IDENTIFIER	= 'IDENTIFIER'
+TT_KEYWORD		= 'KEYWORD'
 TT_PLUS = 'MAIS'
 TT_MINUS = 'MENOS'
 TT_MUL = 'VEZES'
@@ -16,7 +20,11 @@ TT_POW = 'ELEVADO'
 TT_LPAREN = 'LPAREN'
 TT_RPAREN = 'RPAREN'
 TT_EOF = 'EOF'
+TT_EQ = 'RECEBE'
 
+KEYWORDS = [
+	'tamarindo'
+]
 
 class Token:
     def __init__(self, type_, value=None, pos_start=None, pos_end=None):
@@ -32,7 +40,11 @@ class Token:
         if pos_end:
             self.pos_end = pos_end
 
-        # Ira printar no terminal
+    # Verifica se o tipo e valor sao os mesmos
+    def matches(self, type_, value):
+        return self.type == type_ and self.value == value
+
+    # Ira printar no terminal
     # Se tem algum valor, vai printar o tipo e valor junto, se nao vai retornar apenas o valor
     def __repr__(self):
         if self.value: return f'{self.type}:{self.value}'
@@ -108,8 +120,9 @@ class Lexer:
 
     def binary_expression(self):
         let_str = ''
+        pos_start = self.pos.copy()
 
-        while self.current_char != None and self.current_char in LETTERS:
+        while self.current_char != None and self.current_char in LETTERS_DIGITS + '_':
             let_str += self.current_char
             self.advance()
 
@@ -123,6 +136,11 @@ class Lexer:
             return Token(TT_DIV, pos_start=self.pos)
         elif let_str == 'elevado':
             return Token(TT_POW, pos_start=self.pos)
+        elif let_str == 'recebe':
+            return Token(TT_EQ, pos_start=self.pos)
+        else:
+            tok_type = TT_KEYWORD if let_str in KEYWORDS else TT_IDENTIFIER
+            return Token(tok_type, let_str, pos_start, self.pos)
 
 ################################################# TRATAMENTO DE ERROS ##################################
 # Tratando erros
@@ -239,20 +257,38 @@ class UnaryOpNode:
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'
 
+# Criando um no com o nome da variavel
+class VarAccessNode:
+	def __init__(self, var_name_tok):
+		self.var_name_tok = var_name_tok
+
+		self.pos_start = self.var_name_tok.pos_start
+		self.pos_end = self.var_name_tok.pos_end
+
+# Criando um no com o nome da variavel e atribuindo valor 
+class VarAssignNode:
+	def __init__(self, var_name_tok, value_node):
+		self.var_name_tok = var_name_tok
+		self.value_node = value_node
+
+		self.pos_start = self.var_name_tok.pos_start
+		self.pos_end = self.value_node.pos_end
+
 ############################################## PARSER ############################################
 class ParseResult:
     def __init__(self):
         self.error = None
         self.node = None
+        self.advance_count = 0
 
     # Recebe um resultado de passagem ou um no e verifica se ocorreu algum erro
     def register(self, res):
-        if isinstance(res, ParseResult):
-            if res.error:
-                self.error = res.error
-            return res.node
+        self.advance_count += res.advance_count
+        if res.error: self.error = res.error
+        return res.node
 
-        return res
+    def register_advancement(self):
+        self.advance_count += 1
 
     # Metodo de sucesso vai apenas atribuir o no
     def success(self, node):
@@ -261,7 +297,8 @@ class ParseResult:
 
     # Metodo de falha apenas vai determinar o erro
     def failure(self, error):
-        self.error = error
+        if not self.error or self.advance_count == 0:
+            self.error = error
         return self
 # Parser
 # Ira converter os tokens para uma syntax abstrata
@@ -293,15 +330,24 @@ class Parser:
         tok = self.current_tok
         
         if tok.type in (TT_INT, TT_FLOAT):
-            res.register(self.advance())
+            res.register_advancement()
+            self.advance()
             return res.success(NumberNode(tok))
 
+        # Verifica se o tipo de token e um identificador, se sim retorna um novo no
+        elif tok.type == TT_IDENTIFIER:
+            res.register_advancement()
+            self.advance()
+            return res.success(VarAccessNode(tok))
+
         elif tok.type == TT_LPAREN:
-            res.register(self.advance())
+            res.register_advancement()
+            self.advance()
             expr = res.register(self.expr())
             if res.error: return res
             if self.current_tok.type == TT_RPAREN:
-                res.register(self.advance())
+                res.register_advancement()
+                self.advance()
                 return res.success(expr)
             else:
                 return res.failure(InvalidSyntaxError(
@@ -311,7 +357,7 @@ class Parser:
         
         return res.failure(InvalidSyntaxError(
 			tok.pos_start, tok.pos_end,
-			"Esperado pague_o_aluguel, gentalha_gentalha, 'mais', 'menos' or '('"
+			"Esperado pague_o_aluguel, gentalha_gentalha, identificador, 'mais', 'menos' or '('"
 		))
     
     def power(self):
@@ -323,7 +369,8 @@ class Parser:
         tok = self.current_tok
         
         if tok.type in (TT_PLUS, TT_MINUS):
-            res.register(self.advance())
+            res.register_advancement()
+            self.advance()
             factor = res.register(self.factor())
             if res.error: return res
             return res.success(UnaryOpNode(tok, factor))
@@ -334,7 +381,47 @@ class Parser:
         return self.bin_op(self.factor, (TT_MUL, TT_DIV))
 
     def expr(self):
-        return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
+        res = ParseResult()
+        
+        # Verifica o tipo de chave
+        if self.current_tok.matches(TT_KEYWORD, 'tamarindo'):
+            res.register_advancement()
+            self.advance()
+
+            # Se o tipo de token nao for diferente do identificador, ele cria uma falha
+            if self.current_tok.type != TT_IDENTIFIER:
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					"Esperado um identificador"
+				))
+            
+            # Caso o usuario esteja tentando criar uma variavel, aqui e onde e atribuido o nome
+            var_name = self.current_tok
+            res.register_advancement()
+            self.advance()
+            
+            # O proximo token precisa ser o token de atribuicao de valor 
+            if self.current_tok.type != TT_EQ:
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					"Esperado '->'"
+				))
+
+            # A nova expressao e atribuida para a variavel que foi criada
+            res.register_advancement()
+            self.advance()
+            expr = res.register(self.expr())
+            if res.error: return res
+            return res.success(VarAssignNode(var_name, expr))
+
+        node = res.register(self.bin_op(self.term, (TT_PLUS, TT_MINUS)))
+        
+        if res.error:
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				"Esperado 'tamarindo', pague_o_aluguel, gentalha_gentalha, identificador, 'mais', 'menos' or '('"
+			))
+        return res.success(node)
 
 # Validadando operacoes
 
@@ -348,7 +435,8 @@ class Parser:
         
         while self.current_tok.type in ops:
             op_tok = self.current_tok
-            res.register(self.advance())
+            res.register_advancement()
+            self.advance()
             right = res.register(func_b())
             if res.error: return res
             left = BinOpNode(left, op_tok, right)
@@ -358,65 +446,87 @@ class Parser:
 ######################################## INTERPRETADOR ###########################################
 # Vai retornar o resultado da sintaxe
 class Interpreter:
-	def visit(self, node, context):
+
+    def visit_VarAccessNode(self, node, context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+        value = context.symbol_table.get(var_name)
+        if not value:
+            return res.failure(RTError(
+				node.pos_start, node.pos_end,
+				f"'{var_name}' não está definido",
+				context
+			))
+        
+        value = value.copy().set_pos(node.pos_start, node.pos_end)
+        return res.success(value)
+    
+    def visit_VarAssignNode(self, node, context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+        value = res.register(self.visit(node.value_node, context))
+        if res.error: return res
+
+        context.symbol_table.set(var_name, value)
+        return res.success(value)
+    
+    def visit(self, node, context):
         # O metodo vai criar uma string chamada visit number node
-		method_name = f'visit_{type(node).__name__}'
+        method_name = f'visit_{type(node).__name__}'
         # A partir do nome, vai ser chamado o metodo de acordo
-		method = getattr(self, method_name, self.no_visit_method)
-		return method(node, context)
+        method = getattr(self, method_name, self.no_visit_method)
+        return method(node, context)
 
     # Mensagem para caso o metodo do no nao esteja definido
-	def no_visit_method(self, node, context):
-		raise Exception(f'No visit_{type(node).__name__} method defined')
+    def no_visit_method(self, node, context):
+        raise Exception(f'No visit_{type(node).__name__} method defined')
 
 	############### TIPOS DE METODO QUE DEFINE OPERACOES ####################
 
     # Retorna sucesso, pois não tem nenhuma operacao envolvida, é apenas numeros
-	def visit_NumberNode(self, node, context):
-		return RTResult().success(
+    def visit_NumberNode(self, node, context):
+        return RTResult().success(
 			Number(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
-		)
+		)    
 
     # Esse metodo determina qual operacao vai ser executada
-	def visit_BinOpNode(self, node, context):
-		res = RTResult()
-		left = res.register(self.visit(node.left_node, context))
-		if res.error: return res
-		right = res.register(self.visit(node.right_node, context))
-		if res.error: return res
-
-		if node.op_tok.type == TT_PLUS:
-			result, error = left.added_to(right)
-		elif node.op_tok.type == TT_MINUS:
-			result, error = left.subbed_by(right)
-		elif node.op_tok.type == TT_MUL:
-			result, error = left.multed_by(right)
-		elif node.op_tok.type == TT_DIV:
-			result, error = left.dived_by(right)
-		elif node.op_tok.type == TT_POW:
-			result, error = left.powed_by(right)
-
-		if error:
-			return res.failure(error)
-		else:
-			return res.success(result.set_pos(node.pos_start, node.pos_end))
+    def visit_BinOpNode(self, node, context):
+        res = RTResult()
+        left = res.register(self.visit(node.left_node, context))
+        if res.error: return res
+        right = res.register(self.visit(node.right_node, context))
+        if res.error: return res
+        
+        if node.op_tok.type == TT_PLUS:
+            result, error = left.added_to(right)
+        elif node.op_tok.type == TT_MINUS:
+            result, error = left.subbed_by(right)
+        elif node.op_tok.type == TT_MUL:
+            result, error = left.multed_by(right)
+        elif node.op_tok.type == TT_DIV:
+            result, error = left.dived_by(right)
+        elif node.op_tok.type == TT_POW:
+            result, error = left.powed_by(right)
+        
+        if error:
+            return res.failure(error)
+        else:
+            return res.success(result.set_pos(node.pos_start, node.pos_end))
 
     # Verica operacoes unitarias, como por exemplo -4 ...
-	def visit_UnaryOpNode(self, node, context):
-		res = RTResult()
-		number = res.register(self.visit(node.node, context))
-		if res.error: return res
-
-		error = None
+    def visit_UnaryOpNode(self, node, context):
+        res = RTResult()
+        number = res.register(self.visit(node.node, context))
+        if res.error: return res
+        error = None
 
         # Caso o operador e menos, multiplica por menos 1 para nega-lo
-		if node.op_tok.type == TT_MINUS:
-			number, error = number.multed_by(Number(-1))
-
-		if error:
-			return res.failure(error)
-		else:
-			return res.success(number.set_pos(node.pos_start, node.pos_end))
+        if node.op_tok.type == TT_MINUS:
+            number, error = number.multed_by(Number(-1))
+        if error:
+            return res.failure(error)
+        else:
+            return res.success(number.set_pos(node.pos_start, node.pos_end))
 
 ################################### ARMAZENANDO VALORES #####################################
 # Essa classe serve apenas para armazenas os valores e em  seguida opera-los com outros numeros
@@ -464,10 +574,42 @@ class Number:
 
 	def powed_by(self, other):
 		if isinstance(other, Number):
-			return Number(self.value ** other.value).set_context(self.context), None
+			return Number(self.value ** other.value).set_context(self.context), None    
+
+	def copy(self):
+		copy = Number(self.value)
+		copy.set_pos(self.pos_start, self.pos_end)
+		copy.set_context(self.context)
+		return copy
 
 	def __repr__(self):
 		return str(self.value)
+
+##################################### ARMAZENANDO NOME DE VARIAVEIS ################################
+# Essa classe observa todos os nomes das variaveis criadas no sistema
+class SymbolTable:
+
+    # Adiciona todas variaveis na lista de simbolos e pai delas (ex: funcoes)
+    # caso a funcao tenha terminado sua execucao o simbolo e removido
+    # o parent e necessario par acaso a variavel for global, assim vai ser possivel acessar em qualuqer parte do sistema
+	def __init__(self):
+		self.symbols = {}
+		self.parent = None
+
+	def get(self, name):
+		value = self.symbols.get(name, None)
+        # Verifica se a variavel est ano dicionario
+        # verifica se ela e parent, se sim vai ser considerado uma variavel global
+		if value == None and self.parent:
+			return self.parent.get(name)
+		return value
+
+    # Adicionando variavel para o dicionario
+	def set(self, name, value):
+		self.symbols[name] = value
+
+	def remove(self, name):
+		del self.symbols[name]
 
 ####################################### RESULTADOS DE EXECUCAO ##############################################
 # Essa classe acompanha o resultado atual e o erro 
@@ -499,8 +641,13 @@ class Context:
 		self.display_name = display_name
 		self.parent = parent
 		self.parent_entry_pos = parent_entry_pos
+		self.symbol_table = None
 
 ######################################### RUN ####################################################
+# Adicionando configuracao para simbolos globais
+global_symbol_table = SymbolTable()
+# Caso o usuario digitar null, vai corresponder o mesmo que 0
+global_symbol_table.set("null", Number(0))
 
 # A funcao abaixo vai pegar o texto e executar no terminal
 # Parametros passados é o nome do arquivo e o texto para que caso ocorra algum erro o usuário saiba de qual local ele esta retornando
@@ -520,6 +667,7 @@ def run(fn, text):
     # Executando o programa ja com os resultados
     interpreter = Interpreter()
     context = Context('<program>')
+    context.symbol_table = global_symbol_table
     result = interpreter.visit(ast.node, context)
 
     # Remove o no da arvore e tambem remove o erro
