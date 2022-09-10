@@ -30,7 +30,11 @@ KEYWORDS = [
 	'tamarindo',
     'e',
     'ou',
-    'negar'
+    'negar',
+    'issoIssoIsso',
+    'zas',
+    'aiQueBurro',
+    'taBomNaoSeIrrite'
 ]
 
 class Token:
@@ -290,6 +294,17 @@ class VarAssignNode:
 		self.pos_start = self.var_name_tok.pos_start
 		self.pos_end = self.value_node.pos_end
 
+# Criando um no com a conficao do if
+class IfNode:
+	def __init__(self, cases, else_case):
+		self.cases = cases
+		self.else_case = else_case
+
+        # Pega a posicao do primeiro caso dentro da lista de casos
+		self.pos_start = self.cases[0][0].pos_start
+        # Pega a ultima posicao do else caso ele existe, caso ele nao exista pega a posicao do ultimo elemento da lista
+		self.pos_end = (self.else_case or self.cases[len(self.cases) - 1][0]).pos_end
+
 ############################################## PARSER ############################################
 class ParseResult:
     def __init__(self):
@@ -370,11 +385,87 @@ class Parser:
 					self.current_tok.pos_start, self.current_tok.pos_end,
 					"Esperado ')'"
 				))
+
+        elif tok.matches(TT_KEYWORD, 'issoIssoIsso'):
+            if_expr = res.register(self.if_expr())
+            if res.error: return res
+            return res.success(if_expr)
         
         return res.failure(InvalidSyntaxError(
 			tok.pos_start, tok.pos_end,
 			"Esperado pague_o_aluguel, gentalha_gentalha, identificador, 'mais', 'menos' or '('"
 		))
+
+    def if_expr(self):
+        res = ParseResult()
+        cases = []
+        else_case = None
+
+        # Primeiro procura-se a keyword correspondente ao if
+        if not self.current_tok.matches(TT_KEYWORD, 'issoIssoIsso'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'issoIssoIsso'"
+			))
+        res.register_advancement()
+        self.advance()
+        
+        # Grava a conficao do primeiro if
+        condition = res.register(self.expr())
+        if res.error: return res
+
+        # Procura o corpo do if
+        if not self.current_tok.matches(TT_KEYWORD, 'zas'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'zas'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        # Registra o corpo do if com suas acoes
+        expr = res.register(self.expr())
+        if res.error: return res
+
+        # Adiciona nos casos a condicao e a expressao
+        cases.append((condition, expr))
+
+        # Procura todos os else if
+        while self.current_tok.matches(TT_KEYWORD, 'aiQueBurro'):
+            res.register_advancement()
+            self.advance()
+
+            # Grava a condicao
+            condition = res.register(self.expr())
+            if res.error: return res
+
+            # Procura o corpo
+            if not self.current_tok.matches(TT_KEYWORD, 'zas'):
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					f"Esperado 'zas'"
+				))
+            res.register_advancement()
+            self.advance()
+
+            # Registra o corpo do else if com suas acoes
+            expr = res.register(self.expr())
+            if res.error: return res
+
+            # Adiciona nos casos a condicao e a expressao
+            cases.append((condition, expr))
+        
+        # Procura pelo else
+        if self.current_tok.matches(TT_KEYWORD, 'taBomNaoSeIrrite'):
+            res.register_advancement()
+            self.advance()
+            
+            else_case = res.register(self.expr())
+            if res.error: return res
+        
+        return res.success(IfNode(cases, else_case))
+
     
     def power(self):
         return self.bin_op(self.atom, (TT_POW, ), self.factor)
@@ -588,6 +679,30 @@ class Interpreter:
         else:
             return res.success(number.set_pos(node.pos_start, node.pos_end))
 
+    def visit_IfNode(self, node, context):
+        res = RTResult()
+
+        # Visita cada par de condicoes do no de casos
+        for condition, expr in node.cases:
+            condition_value = res.register(self.visit(condition, context))
+            if res.error: return res
+
+            # Verifica se a condicao e verdadeira
+            if condition_value.is_true():
+                # Se a condicao e verdadeira a expressao e validada
+                expr_value = res.register(self.visit(expr, context))
+                if res.error: return res
+                # Caso nao tenha erro retorna o valor com sucesso
+                return res.success(expr_value)
+
+        # Se a condicao nao for verdadeira procura pelo else
+        if node.else_case:
+            else_value = res.register(self.visit(node.else_case, context))
+            if res.error: return res
+            return res.success(else_value)
+        
+        return res.success(None)
+
 ################################### ARMAZENANDO VALORES #####################################
 # Essa classe serve apenas para armazenas os valores e em  seguida opera-los com outros numeros
 
@@ -667,7 +782,10 @@ class Number:
 		copy = Number(self.value)
 		copy.set_pos(self.pos_start, self.pos_end)
 		copy.set_context(self.context)
-		return copy
+		return copy    
+
+	def is_true(self):
+		return self.value != 0
 
 	def __repr__(self):
 		return str(self.value)
@@ -735,8 +853,8 @@ class Context:
 global_symbol_table = SymbolTable()
 # Caso o usuario digitar null, vai corresponder o mesmo que 0
 global_symbol_table.set("null", Number(0))
-global_symbol_table.set("FALSE", Number(0))
-global_symbol_table.set("TRUE", Number(1))
+global_symbol_table.set("false", Number(0))
+global_symbol_table.set("true", Number(1))
 
 # A funcao abaixo vai pegar o texto e executar no terminal
 # Parametros passados é o nome do arquivo e o texto para que caso ocorra algum erro o usuário saiba de qual local ele esta retornando

@@ -3,5 +3,6 @@ import chavesSharpBasic
 while True:
     text = input('ChavesSharp > ')
     result, error = chavesSharpBasic.run('<stdin>',text)
+
     if error: print(error.as_string())
-    else: print(result)
+    elif result: print(result)

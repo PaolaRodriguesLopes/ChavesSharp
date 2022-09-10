@@ -14,4 +14,9 @@ factor		: (MAIS|MENOS) factor
 power		: atom (ELEVADO factor)*
 
 atom 		: PAGUE_O_ALUGUEL|GENTALHA_GENTALHA|IDENTIFIER
-				: LPAREN expr RPAREN
+			: LPAREN expr RPAREN
+			: if-expr
+
+if-expr		: KEYWORD:issoIssoIsso expr KEYWORD:zas expr
+			  (KEYWORD:aiQueBurro expr KEYWORD:zas expr)*
+			  (KEYWORD:taBomNaoSeIrrite expr)?
