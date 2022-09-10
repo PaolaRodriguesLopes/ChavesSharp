@@ -1,10 +1,15 @@
-expr    : KEYWORD:TAMARINDO IDENTIFIER RECEBE expr
-		: term ((MAIS|MENOS) term)*
+expr    	: KEYWORD:TAMARINDO IDENTIFIER RECEBE expr
+			: comp-expr ((KEYWORD:E|KEYWORD:OU) comp-expr)*
 
-term    : factor ((VEZES|DIVIDO) factor)*
+comp-expr	: NOT comp-expr
+		    : arith-expr ((IGUAL|MENOR|MAIOR) arith-expr)*
 
-factor	: (MAIS|MENOS) factor
-				: power
+arith-expr	:	term ((MAIS|MENOS) term)*
+
+term    	: factor ((VEZES|DIVIDO) factor)*
+
+factor		: (MAIS|MENOS) factor
+			: power
 
 power		: atom (ELEVADO factor)*
 

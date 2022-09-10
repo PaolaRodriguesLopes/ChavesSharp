@@ -20,10 +20,17 @@ TT_POW = 'ELEVADO'
 TT_LPAREN = 'LPAREN'
 TT_RPAREN = 'RPAREN'
 TT_EOF = 'EOF'
+TT_EE = 'IGUAL'
+TT_NE = 'DIFERENTE'
+TT_LT = 'MENOR'
+TT_GT = 'MAIOR'
 TT_EQ = 'RECEBE'
 
 KEYWORDS = [
-	'tamarindo'
+	'tamarindo',
+    'e',
+    'ou',
+    'negar'
 ]
 
 class Token:
@@ -138,9 +145,18 @@ class Lexer:
             return Token(TT_POW, pos_start=self.pos)
         elif let_str == 'recebe':
             return Token(TT_EQ, pos_start=self.pos)
+        elif let_str == 'diferente':            
+            return Token(TT_NE, pos_start=self.pos)
+        elif let_str == 'igual':
+            return Token(TT_EE, pos_start=pos_start, pos_end=self.pos)
+        elif let_str == 'menor':
+            return Token(TT_LT, pos_start=self.pos)
+        elif let_str == 'maior':
+            return Token(TT_GT, pos_start=self.pos)
         else:
             tok_type = TT_KEYWORD if let_str in KEYWORDS else TT_IDENTIFIER
             return Token(tok_type, let_str, pos_start, self.pos)
+
 
 ################################################# TRATAMENTO DE ERROS ##################################
 # Tratando erros
@@ -377,8 +393,35 @@ class Parser:
         
         return self.power()
     
+    # Termos que tem maior prioridade 
     def term(self):
         return self.bin_op(self.factor, (TT_MUL, TT_DIV))
+
+    # Operadores com menor prioridade
+    def arith_expr(self):
+        return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
+
+    # Compara os operadores logicos
+    def comp_expr(self):
+        res = ParseResult()
+
+        if self.current_tok.matches(TT_KEYWORD, 'negar'):
+            op_tok = self.current_tok
+            res.register_advancement()
+            self.advance()
+            node = res.register(self.comp_expr())
+            if res.error: return res
+            return res.success(UnaryOpNode(op_tok, node))
+
+        node = res.register(self.bin_op(self.arith_expr, (TT_EE, TT_NE, TT_LT, TT_GT)))
+
+        # Mensagem de erro para caso nao seja um operador logico
+        if res.error:
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				"Esperado pague_o_aluguel, gentalha_gentalha, identifier, 'mais', 'menos', '(' ou 'negar'"
+			))
+        return res.success(node)
 
     def expr(self):
         res = ParseResult()
@@ -414,7 +457,8 @@ class Parser:
             if res.error: return res
             return res.success(VarAssignNode(var_name, expr))
 
-        node = res.register(self.bin_op(self.term, (TT_PLUS, TT_MINUS)))
+        # Para criar o no e preciso pesquisar primeiro se tem uma comparacao na expressao
+        node = res.register(self.bin_op(self.comp_expr, ((TT_KEYWORD, 'e'), (TT_KEYWORD, 'ou'))))
         
         if res.error:
             return res.failure(InvalidSyntaxError(
@@ -433,7 +477,8 @@ class Parser:
         left = res.register(func_a())
         if res.error: return res
         
-        while self.current_tok.type in ops:
+        # Permite operadores logicos e aritmeticos
+        while self.current_tok.type in ops or (self.current_tok.type, self.current_tok.value) in ops:
             op_tok = self.current_tok
             res.register_advancement()
             self.advance()
@@ -507,6 +552,18 @@ class Interpreter:
             result, error = left.dived_by(right)
         elif node.op_tok.type == TT_POW:
             result, error = left.powed_by(right)
+        elif node.op_tok.type == TT_EE:
+            result, error = left.get_comparison_eq(right)
+        elif node.op_tok.type == TT_NE:
+            result, error = left.get_comparison_ne(right)
+        elif node.op_tok.type == TT_LT:
+            result, error = left.get_comparison_lt(right)
+        elif node.op_tok.type == TT_GT:
+            result, error = left.get_comparison_gt(right)
+        elif node.op_tok.matches(TT_KEYWORD, 'e'):
+            result, error = left.anded_by(right)
+        elif node.op_tok.matches(TT_KEYWORD, 'ou'):
+            result, error = left.ored_by(right)
         
         if error:
             return res.failure(error)
@@ -523,6 +580,9 @@ class Interpreter:
         # Caso o operador e menos, multiplica por menos 1 para nega-lo
         if node.op_tok.type == TT_MINUS:
             number, error = number.multed_by(Number(-1))
+        elif node.op_tok.matches(TT_KEYWORD, 'negar'):
+            number, error = number.notted()
+
         if error:
             return res.failure(error)
         else:
@@ -574,7 +634,34 @@ class Number:
 
 	def powed_by(self, other):
 		if isinstance(other, Number):
-			return Number(self.value ** other.value).set_context(self.context), None    
+			return Number(self.value ** other.value).set_context(self.context), None
+
+	def get_comparison_eq(self, other):
+		if isinstance(other, Number):
+			return Number(int(self.value == other.value)).set_context(self.context), None
+    
+	def get_comparison_ne(self, other):
+		if isinstance(other, Number):
+			return Number(int(self.value != other.value)).set_context(self.context), None
+
+	def get_comparison_lt(self, other):
+		if isinstance(other, Number):
+			return Number(int(self.value < other.value)).set_context(self.context), None
+
+	def get_comparison_gt(self, other):
+		if isinstance(other, Number):
+			return Number(int(self.value > other.value)).set_context(self.context), None
+
+	def anded_by(self, other):
+		if isinstance(other, Number):
+			return Number(int(self.value and other.value)).set_context(self.context), None    
+
+	def ored_by(self, other):
+		if isinstance(other, Number):
+			return Number(int(self.value or other.value)).set_context(self.context), None
+
+	def notted(self):
+		return Number(1 if self.value == 0 else 0).set_context(self.context), None
 
 	def copy(self):
 		copy = Number(self.value)
@@ -648,6 +735,8 @@ class Context:
 global_symbol_table = SymbolTable()
 # Caso o usuario digitar null, vai corresponder o mesmo que 0
 global_symbol_table.set("null", Number(0))
+global_symbol_table.set("FALSE", Number(0))
+global_symbol_table.set("TRUE", Number(1))
 
 # A funcao abaixo vai pegar o texto e executar no terminal
 # Parametros passados é o nome do arquivo e o texto para que caso ocorra algum erro o usuário saiba de qual local ele esta retornando
