@@ -31,10 +31,14 @@ KEYWORDS = [
     'e',
     'ou',
     'negar',
-    'issoIssoIsso',
-    'zas',
+    'issoIssoIsso',    
     'aiQueBurro',
-    'taBomNaoSeIrrite'
+    'taBomNaoSeIrrite',
+    'evitarFadiga',
+    'ate',
+    'passos',
+    'voltaOCaoArrependido',
+    'zas',
 ]
 
 class Token:
@@ -305,6 +309,27 @@ class IfNode:
         # Pega a ultima posicao do else caso ele existe, caso ele nao exista pega a posicao do ultimo elemento da lista
 		self.pos_end = (self.else_case or self.cases[len(self.cases) - 1][0]).pos_end
 
+# Iniciando no do for
+class ForNode:
+	def __init__(self, var_name_tok, start_value_node, end_value_node, step_value_node, body_node):
+		self.var_name_tok = var_name_tok
+		self.start_value_node = start_value_node
+		self.end_value_node = end_value_node
+		self.step_value_node = step_value_node
+		self.body_node = body_node
+
+		self.pos_start = self.var_name_tok.pos_start
+		self.pos_end = self.body_node.pos_end
+
+# Iniciando no do while
+class WhileNode:
+	def __init__(self, condition_node, body_node):
+		self.condition_node = condition_node
+		self.body_node = body_node
+
+		self.pos_start = self.condition_node.pos_start
+		self.pos_end = self.body_node.pos_end
+
 ############################################## PARSER ############################################
 class ParseResult:
     def __init__(self):
@@ -390,6 +415,16 @@ class Parser:
             if_expr = res.register(self.if_expr())
             if res.error: return res
             return res.success(if_expr)
+
+        elif tok.matches(TT_KEYWORD, 'evitarFadiga'):
+            for_expr = res.register(self.for_expr())
+            if res.error: return res
+            return res.success(for_expr)
+        
+        elif tok.matches(TT_KEYWORD, 'voltaOCaoArrependido'):
+            while_expr = res.register(self.while_expr())
+            if res.error: return res
+            return res.success(while_expr)
         
         return res.failure(InvalidSyntaxError(
 			tok.pos_start, tok.pos_end,
@@ -466,6 +501,118 @@ class Parser:
         
         return res.success(IfNode(cases, else_case))
 
+    def for_expr(self):
+        res = ParseResult()
+        
+        # Procura pela keyword do for
+        if not self.current_tok.matches(TT_KEYWORD, 'evitarFadiga'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'evitarFadiga'"
+			))
+        
+        res.register_advancement()
+        self.advance()
+        
+        # procuta um identificador de nome de variaveis
+        if self.current_tok.type != TT_IDENTIFIER:
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado um identificador"
+			))
+        
+        # adiciona o nome da variavel
+        var_name = self.current_tok
+        res.register_advancement()
+        self.advance()
+        
+        # Progura um operado de igual para informar o inicio
+        if self.current_tok.type != TT_EQ:
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'igual'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        # Adiciona o comeco
+        start_value = res.register(self.expr())
+        if res.error: return res
+
+        # Procura o operador de ate para saber quantas execucoes
+        if not self.current_tok.matches(TT_KEYWORD, 'ate'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'ate'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        # Adiciona a quantidade de iterações
+        end_value = res.register(self.expr())
+        if res.error: return res
+
+        # Procura o identificador de saltos e atribui quantos salto a cada iteracao
+        if self.current_tok.matches(TT_KEYWORD, 'passos'):
+            res.register_advancement()
+            self.advance()
+
+            step_value = res.register(self.expr())
+            if res.error: return res
+        else:
+            step_value = None
+
+        # Procura o inicio do corpo
+        if not self.current_tok.matches(TT_KEYWORD, 'zas'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'zas'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        # Adiciona o corpo nas repeticoes
+        body = res.register(self.expr())
+        if res.error: return res
+
+        return res.success(ForNode(var_name, start_value, end_value, step_value, body))
+
+    def while_expr(self):
+        res = ParseResult()
+
+        # Procura a keyword do while
+        if not self.current_tok.matches(TT_KEYWORD, 'voltaOCaoArrependido'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'voltaOCaoArrependido'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        # Adiciona a condicao
+        condition = res.register(self.expr())
+        if res.error: return res
+
+        # Procura o corpo da keyword
+        if not self.current_tok.matches(TT_KEYWORD, 'zas'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Expected 'zas'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        # Adiciona o corpo na execucao
+        body = res.register(self.expr())
+        if res.error: return res
+
+        return res.success(WhileNode(condition, body))
+
     
     def power(self):
         return self.bin_op(self.atom, (TT_POW, ), self.factor)
@@ -510,7 +657,7 @@ class Parser:
         if res.error:
             return res.failure(InvalidSyntaxError(
 				self.current_tok.pos_start, self.current_tok.pos_end,
-				"Esperado pague_o_aluguel, gentalha_gentalha, identifier, 'mais', 'menos', '(' ou 'negar'"
+				"Esperado pague_o_aluguel, gentalha_gentalha, identificador, 'mais', 'menos', '(' ou 'negar'"
 			))
         return res.success(node)
 
@@ -701,6 +848,61 @@ class Interpreter:
             if res.error: return res
             return res.success(else_value)
         
+        return res.success(None)
+
+    #
+    def visit_ForNode(self, node, context):
+        res = RTResult()
+
+        start_value = res.register(self.visit(node.start_value_node, context))
+        if res.error: return res
+
+        end_value = res.register(self.visit(node.end_value_node, context))
+        if res.error: return res
+        
+        # Caso tenha saltos definidos ele registra, se nao tiver assume com o valor 1
+        if node.step_value_node:
+            step_value = res.register(self.visit(node.step_value_node, context))
+            if res.error: return res
+        else:
+            step_value = Number(1)
+
+        i = start_value.value
+
+        # Verifica se o numero e positivo ou negativo e seta a condicao de acordo
+        if step_value.value >= 0:
+            condition = lambda: i < end_value.value
+        else:
+            condition = lambda: i > end_value.value
+
+        while condition():
+            # Assinala a variavel para a condicao
+            context.symbol_table.set(node.var_name_tok.value, Number(i))
+
+            # Incrementa as execucoes
+            i += step_value.value
+
+            # Registra o corpo do for e executa
+            res.register(self.visit(node.body_node, context))
+            if res.error: return res
+
+        return res.success(None)
+
+    def visit_WhileNode(self, node, context):
+        res = RTResult()
+
+        while True:
+            # Registra a condicao 
+            condition = res.register(self.visit(node.condition_node, context))
+            if res.error: return res
+            
+            # Se a condicao nao for verdadeira ele para a execucao
+            if not condition.is_true(): break
+
+            # Caso ainda esteja no looping continua executando a condicao
+            res.register(self.visit(node.body_node, context))
+            if res.error: return res
+
         return res.success(None)
 
 ################################### ARMAZENANDO VALORES #####################################

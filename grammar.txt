@@ -20,3 +20,8 @@ atom 		: PAGUE_O_ALUGUEL|GENTALHA_GENTALHA|IDENTIFIER
 if-expr		: KEYWORD:issoIssoIsso expr KEYWORD:zas expr
 			  (KEYWORD:aiQueBurro expr KEYWORD:zas expr)*
 			  (KEYWORD:taBomNaoSeIrrite expr)?
+
+for-expr	: KEYWORD:evitarFadiga IDENTIFIER RECEBE expr KEYWORD:ATE expr 
+			  (KEYWORD:PASSOS expr)? KEYWORD:zas expr
+
+while-expr	: KEYWORD:voltaOCaoArrependido expr KEYWORD:zas expr
