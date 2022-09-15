@@ -1,5 +1,5 @@
 
-import chavesSharpBasic
+from lexer import Lexer
 
 if __name__ == "__main__":
     with open('./codigo.txt') as file:    
@@ -8,7 +8,7 @@ if __name__ == "__main__":
         text = linha.strip()
         # result = chavesSharpBasic.run('<stdin>',text)
         # print(result.var_name_tok)
-        lexer = chavesSharpBasic.Lexer('<stdin>', text)
+        lexer = Lexer('<stdin>', text)
         tokens, error = lexer.make_tokens()
         print(tokens)
 
