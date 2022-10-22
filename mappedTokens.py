@@ -25,6 +25,8 @@ class MappedTokens:
     TT_LT = 'MENOR'
     TT_GT = 'MAIOR'
     TT_EQ = 'RECEBE'
+    TT_COMMA = 'VIRGULA'
+    TT_FUNC = 'FUNCAO'
 
     KEYWORDS = [
         'tamarindo',
@@ -36,6 +38,7 @@ class MappedTokens:
         'taBomNaoSeIrrite',
         'evitarFadiga',
         'ate',
+        'piPiPi',
         'passos',
         'voltaOCaoArrependido',
         'zas',

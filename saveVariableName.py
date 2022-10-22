@@ -6,9 +6,9 @@ class SymbolTable:
     # Adiciona todas variaveis na lista de simbolos e pai delas (ex: funcoes)
     # caso a funcao tenha terminado sua execucao o simbolo e removido
     # o parent e necessario par acaso a variavel for global, assim vai ser possivel acessar em qualuqer parte do sistema
-	def __init__(self):
+	def __init__(self, parent=None):
 		self.symbols = {}
-		self.parent = None
+		self.parent = parent
 
 	def get(self, name):
 		value = self.symbols.get(name, None)

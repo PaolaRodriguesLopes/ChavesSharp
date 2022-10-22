@@ -97,6 +97,11 @@ class Parser:
             while_expr = res.register(self.while_expr())
             if res.error: return res
             return res.success(while_expr)
+
+        elif tok.matches(MappedTokens.TT_KEYWORD, 'piPiPi'):
+            func_def = res.register(self.func_def())
+            if res.error: return res
+            return res.success(func_def)
         
         return res.failure(InvalidSyntaxError(
 			tok.pos_start, tok.pos_end,
@@ -287,8 +292,50 @@ class Parser:
 
     
     def power(self):
-        return self.bin_op(self.atom, (MappedTokens.TT_POW, ), self.factor)
+        return self.bin_op(self.call, (MappedTokens.TT_POW, ), self.factor)
 
+    def call(self):
+        res = ParseResult()
+        atom = res.register(self.atom())
+        if res.error: return res
+
+        if self.current_tok.type == MappedTokens.TT_LPAREN:
+            res.register_advancement()
+            self.advance()
+            # Array para adicionar se a funcao tem parametros ou nao
+            arg_nodes = []
+
+            #Verifica se tem parametros, caso contrario avanca
+            if self.current_tok.type == MappedTokens.TT_RPAREN:
+                res.register_advancement()
+                self.advance()
+            else:
+                arg_nodes.append(res.register(self.expr()))
+                if res.error:
+                    return res.failure(InvalidSyntaxError(
+						self.current_tok.pos_start, self.current_tok.pos_end,
+						"Esperado ')', 'tamarindo', 'issoIssoIsso', 'evitarFadiga', 'voltaOCaoArrependido', 'piPiPi', pague_o_aluguel, gentalha_gentalha, identificador, 'mais', 'menos', '(' ou 'negar'"
+					))
+
+                # Verifica se tem virgula, caso contrario avanca
+                while self.current_tok.type == MappedTokens.TT_COMMA:
+                    res.register_advancement()
+                    self.advance()
+
+                    arg_nodes.append(res.register(self.expr()))
+                    if res.error: return res
+
+                # Verifica se tem parenteses fechando
+                if self.current_tok.type != MappedTokens.TT_RPAREN:
+                    return res.failure(InvalidSyntaxError(
+						self.current_tok.pos_start, self.current_tok.pos_end,
+						f"Expected ',' or ')'"
+					))
+
+                res.register_advancement()
+                self.advance()
+            return res.success(CallNode(atom, arg_nodes))
+        return res.success(atom)
 
     def factor(self):
         res = ParseResult()
@@ -376,6 +423,90 @@ class Parser:
 				"Esperado 'tamarindo', pague_o_aluguel, gentalha_gentalha, identificador, 'mais', 'menos' or '('"
 			))
         return res.success(node)
+
+    def func_def(self):
+        res = ParseResult()
+
+        if not self.current_tok.matches(MappedTokens.TT_KEYWORD, 'piPiPi'):
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado 'piPiPi'"
+			))
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type == MappedTokens.TT_IDENTIFIER:
+            var_name_tok = self.current_tok
+            res.register_advancement()
+            self.advance()
+            if self.current_tok.type != MappedTokens.TT_LPAREN:
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					f"Esperado '('"
+				))
+        else:
+            var_name_tok = None
+            if self.current_tok.type != MappedTokens.TT_LPAREN:
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					f"Esperado um identificador ou '('"
+				))
+		
+        res.register_advancement()
+        self.advance()
+        arg_name_toks = []
+
+        if self.current_tok.type == MappedTokens.TT_IDENTIFIER:
+            arg_name_toks.append(self.current_tok)
+            res.register_advancement()
+            self.advance()
+			
+            while self.current_tok.type == MappedTokens.TT_COMMA:
+                res.register_advancement()
+                self.advance()
+
+                if self.current_tok.type != MappedTokens.TT_IDENTIFIER:
+                    return res.failure(InvalidSyntaxError(
+						self.current_tok.pos_start, self.current_tok.pos_end,
+						f"Esperado um identificador"
+					))
+
+                arg_name_toks.append(self.current_tok)
+                res.register_advancement()
+                self.advance()
+			
+            if self.current_tok.type != MappedTokens.TT_RPAREN:
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					f"Esperado ',' ou ')'"
+				))
+        else:
+            if self.current_tok.type != MappedTokens.TT_RPAREN:
+                return res.failure(InvalidSyntaxError(
+					self.current_tok.pos_start, self.current_tok.pos_end,
+					f"Esperado um identificador ou ')'"
+				))
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type != MappedTokens.TT_FUNC:
+            return res.failure(InvalidSyntaxError(
+				self.current_tok.pos_start, self.current_tok.pos_end,
+				f"Esperado '='"
+			))
+
+        res.register_advancement()
+        self.advance()
+        node_to_return = res.register(self.expr())
+        if res.error: return res
+
+        return res.success(FuncDefNode(
+			var_name_tok,
+			arg_name_toks,
+			node_to_return
+		))
 
 # Validadando operacoes
 

@@ -1,5 +1,4 @@
 # Esse documento ira ler o input no terminal
-import chavesSharpBasic
 from run import Run
 while True:
     text = input('ChavesSharp > ')

@@ -11,11 +11,14 @@ term    	: factor ((VEZES|DIVIDO) factor)*
 factor		: (MAIS|MENOS) factor
 			: power
 
-power		: atom (ELEVADO factor)*
+power		: call (ELEVADO factor)*
+
+call		: atom (LPAREN (expr (VIRGULA expr)*)? RPAREN)?
 
 atom 		: PAGUE_O_ALUGUEL|GENTALHA_GENTALHA|IDENTIFIER
 			: LPAREN expr RPAREN
 			: if-expr
+			: func-def
 
 if-expr		: KEYWORD:issoIssoIsso expr KEYWORD:zas expr
 			  (KEYWORD:aiQueBurro expr KEYWORD:zas expr)*
@@ -25,3 +28,7 @@ for-expr	: KEYWORD:evitarFadiga IDENTIFIER RECEBE expr KEYWORD:ATE expr
 			  (KEYWORD:PASSOS expr)? KEYWORD:zas expr
 
 while-expr	: KEYWORD:voltaOCaoArrependido expr KEYWORD:zas expr
+
+func-def 	: KEYWORD:piPiPi IDENTIFIER?
+							LPAREN (IDENTIFIER (VIRGULA IDENTIFIER)*)? RPAREN
+							FUNC expr

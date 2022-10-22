@@ -2,7 +2,7 @@ from lexer import Lexer
 from context import Context
 from saveVariableName import SymbolTable
 from parser import Parser
-from interpreter import Interpreter
+from interpreter import *
 from saveNumbers import Number
 
 ######################################### RUN ####################################################
