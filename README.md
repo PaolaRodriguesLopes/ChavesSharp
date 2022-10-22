@@ -2,6 +2,10 @@
 
 Este projeto é dedicado ao estudo da matéria de compiladores.
 
+    - Geazi Antunes (180683)
+    - Matheus Lima de Almeida (180018)
+    - Paola Rodrigues Lopes (180115)
+
 ## 🚀 Como executar
 
 Execute o comando apresentado nessa sessão no terminal.
@@ -81,7 +85,6 @@ Abaixo estão os exemplos de como estruturar
 Exemplo outras linguagens: 
 ```
 VAR d = 4;
-
 ```
 Exemplo Chaves Sharp:
 ```
@@ -93,7 +96,6 @@ tamarindo d recebe 4
 Exemplo outras linguagens: 
 ```
 VAR d = "test";
-
 ```
 
 Exemplo Chaves Sharp:
