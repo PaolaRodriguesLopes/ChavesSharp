@@ -1,0 +1,15 @@
+piPiPi ex3() = "3 - Elabore uma funcao no qual a mesma deve receber um parametro de resposta. Caso a funcao recebe 0 o Kiko nao quer jogar bola, caso receba 1 o Kiko quer jogar bola com a vila, e se a resposta nao corresponder nenhuma das duas opcoes deve ser exibido a mensagem 'nenhuma reposta'"
+piPiPi separador() = "------------------------------------------------------------------------------------------------------------"
+piPiPi pergunta() = "KIKO QUER JOGAR BOLA?"
+piPiPi respostaKiko(resposta) = issoIssoIsso resposta igual 0 zas "nao quero jogar bola" aiQueBurro resposta igual 1 zas "quero jogar bola com a vila" taBomNaoSeIrrite "nenhuma resposta"
+separador()
+ex3()
+separador()
+pergunta()
+respostaKiko(0)
+separador()
+pergunta()
+respostaKiko(1)
+separador()
+pergunta()
+respostaKiko(3)

@@ -1,0 +1,9 @@
+tamarindo a recebe ""
+piPiPi separador() = "------------------------------------------------------------------------------------------------------------"
+piPiPi ex1() = "1 - Utilize uma das estruturas de repeticoes para imprimir 5 vezes a palavra 'ta'"
+piPiPi resultadoEx1(res) = "RESULTADO = " mais res
+separador()
+ex1()
+evitarFadiga i recebe 1 ate 6 zas tamarindo a recebe "ta " mais a
+separador()
+resultadoEx1(a) 

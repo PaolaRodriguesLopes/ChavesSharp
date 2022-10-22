@@ -1,0 +1,10 @@
+tamarindo result recebe 0
+piPiPi separador() = "------------------------------------------------------------------------------------------------------------"
+piPiPi ex2() = "2 -  Suponha que o aluguel do Seu Madruga seja de 1000 reais por mes, qual o valor total que o Seu Madruga deve para o Seu Barriga depois de 14 meses de aluguel?"
+piPiPi resultadoEx2() = "VALOR TOTAL QUE SEU MADRUGA DEVE = "
+separador()
+ex2()
+evitarFadiga i recebe 0 ate 14 zas tamarindo result recebe 1000 mais result
+separador()
+resultadoEx2()
+result
