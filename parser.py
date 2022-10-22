@@ -62,6 +62,11 @@ class Parser:
             self.advance()
             return res.success(NumberNode(tok))
 
+        if tok.type in (MappedTokens.TT_STRING):
+            res.register_advancement()
+            self.advance()
+            return res.success(StringNode(tok))
+
         # Verifica se o tipo de token e um identificador, se sim retorna um novo no
         elif tok.type == MappedTokens.TT_IDENTIFIER:
             res.register_advancement()

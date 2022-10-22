@@ -10,6 +10,7 @@ class MappedTokens:
     # Criando tokens
     TT_INT = 'PAGUE_O_ALUGUEL'
     TT_FLOAT = 'GENTALHA_GENTALHA'
+    TT_STRING = 'OLHA_ELE'
     TT_IDENTIFIER	= 'IDENTIFIER'
     TT_KEYWORD		= 'KEYWORD'
     TT_PLUS = 'MAIS'

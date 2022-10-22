@@ -15,7 +15,7 @@ power		: call (ELEVADO factor)*
 
 call		: atom (LPAREN (expr (VIRGULA expr)*)? RPAREN)?
 
-atom 		: PAGUE_O_ALUGUEL|GENTALHA_GENTALHA|IDENTIFIER
+atom 		: PAGUE_O_ALUGUEL|OLHA_ELE|GENTALHA_GENTALHA|IDENTIFIER
 			: LPAREN expr RPAREN
 			: if-expr
 			: func-def
